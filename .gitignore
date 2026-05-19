@@ -1,0 +1,36 @@
+# ─── Maven ───────────────────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ─── IntelliJ IDEA ───────────────────────────────────────────────────────────
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# ─── Eclipse ─────────────────────────────────────────────────────────────────
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# ─── VS Code ─────────────────────────────────────────────────────────────────
+.vscode/
+
+# ─── Sistema Operativo ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Secretos — NUNCA subir credenciales reales ──────────────────────────────
+# application-prod.properties contiene la URI real de MongoDB Atlas
+application-prod.properties
