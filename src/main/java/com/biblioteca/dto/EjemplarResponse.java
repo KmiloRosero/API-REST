@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * DTO de salida para devolver información de un Ejemplar al cliente.
- * Incluye el título del libro para mayor legibilidad en la respuesta.
+ * EjemplarResponse → lo que el API DEVUELVE al cliente (con id y tituloLibro)
  */
 @Data
 @NoArgsConstructor
@@ -17,10 +17,7 @@ public class EjemplarResponse {
     private String id;
     private String codigoEjemplar;
     private String libroId;
-
-    /** Título del libro incluido para facilitar la lectura de la respuesta */
     private String tituloLibro;
-
     private Ejemplar.EstadoEjemplar estado;
     private String ubicacion;
 }

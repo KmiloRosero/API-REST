@@ -6,6 +6,7 @@ import com.biblioteca.model.Ejemplar;
 import com.biblioteca.model.Prestamo;
 import com.biblioteca.model.Usuario;
 import com.biblioteca.repository.EjemplarRepository;
+import com.biblioteca.repository.LibroRepository;
 import com.biblioteca.repository.PrestamoRepository;
 import com.biblioteca.repository.UsuarioRepository;
 import com.biblioteca.service.PrestamoService;
@@ -17,19 +18,12 @@ import java.util.stream.Collectors;
 
 /**
  * Implementación concreta de PrestamoService.
- * Es el servicio más complejo del sistema: coordina la lógica entre
- * Usuarios, Ejemplares y Préstamos, aplicando todas las reglas de negocio.
+ * Es el servicio más complejo: aplica las reglas de negocio del tutorial:
  *
- * Reglas de negocio implementadas:
- *   1. Solo se puede prestar un ejemplar en estado DISPONIBLE.
- *   2. Al prestar, el ejemplar cambia a estado PRESTADO.
- *   3. Al devolver, el ejemplar vuelve a estado DISPONIBLE.
- *   4. Solo se puede devolver un préstamo en estado ACTIVO.
- *   5. La fecha de préstamo se asigna automáticamente (fecha actual).
- *   6. Un préstamo es VENCIDO si su fecha esperada ya pasó y sigue ACTIVO.
- *
- * Patrón POO: Polimorfismo — implementa la interfaz PrestamoService.
- * Patrón POO: Asociación — coordina Usuario, Ejemplar y Prestamo.
+ *   REGLA 1: Al crear un préstamo, verificar que el ejemplar esté DISPONIBLE.
+ *   REGLA 2: Al crear un préstamo, cambiar el estado del ejemplar a PRESTADO.
+ *   REGLA 3: Al registrar una devolución, cambiar el ejemplar a DISPONIBLE.
+ *   REGLA 4: Al registrar una devolución, cambiar el préstamo a DEVUELTO.
  */
 @Service
 public class PrestamoServiceImpl implements PrestamoService {
@@ -37,21 +31,17 @@ public class PrestamoServiceImpl implements PrestamoService {
     private final PrestamoRepository prestamoRepository;
     private final UsuarioRepository usuarioRepository;
     private final EjemplarRepository ejemplarRepository;
+    private final LibroRepository libroRepository;
 
-    /**
-     * Inyección por constructor de los tres repositorios necesarios.
-     */
     public PrestamoServiceImpl(PrestamoRepository prestamoRepository,
                                 UsuarioRepository usuarioRepository,
-                                EjemplarRepository ejemplarRepository) {
+                                EjemplarRepository ejemplarRepository,
+                                LibroRepository libroRepository) {
         this.prestamoRepository = prestamoRepository;
         this.usuarioRepository = usuarioRepository;
         this.ejemplarRepository = ejemplarRepository;
+        this.libroRepository = libroRepository;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // REGISTRAR PRÉSTAMO
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public PrestamoResponse registrarPrestamo(PrestamoRequest request) {
@@ -65,9 +55,9 @@ public class PrestamoServiceImpl implements PrestamoService {
                 .orElseThrow(() -> new RuntimeException(
                         "Ejemplar no encontrado con id: " + request.getEjemplarId()));
 
-        // 3. Regla de negocio: el ejemplar debe estar DISPONIBLE
+        // 3. REGLA: el ejemplar debe estar en estado DISPONIBLE
         if (ejemplar.getEstado() != Ejemplar.EstadoEjemplar.DISPONIBLE) {
-            throw new IllegalStateException(
+            throw new RuntimeException(
                     "El ejemplar '" + ejemplar.getCodigoEjemplar() +
                     "' no está disponible. Estado actual: " + ejemplar.getEstado());
         }
@@ -80,9 +70,8 @@ public class PrestamoServiceImpl implements PrestamoService {
         prestamo.setFechaDevolucionEsperada(request.getFechaDevolucionEsperada());
         prestamo.setFechaDevolucionReal(null);
         prestamo.setEstado(Prestamo.EstadoPrestamo.ACTIVO);
-        prestamo.setObservaciones(request.getObservaciones());
 
-        // 5. Cambiar el estado del ejemplar a PRESTADO
+        // 5. REGLA: cambiar el estado del ejemplar a PRESTADO
         ejemplar.setEstado(Ejemplar.EstadoEjemplar.PRESTADO);
         ejemplarRepository.save(ejemplar);
 
@@ -92,10 +81,6 @@ public class PrestamoServiceImpl implements PrestamoService {
         return mapToResponse(prestamoGuardado, usuario, ejemplar);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // REGISTRAR DEVOLUCIÓN
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
     public PrestamoResponse registrarDevolucion(String prestamoId) {
         // 1. Buscar el préstamo
@@ -103,9 +88,9 @@ public class PrestamoServiceImpl implements PrestamoService {
                 .orElseThrow(() -> new RuntimeException(
                         "Préstamo no encontrado con id: " + prestamoId));
 
-        // 2. Regla de negocio: solo se puede devolver un préstamo ACTIVO
+        // 2. Verificar que el préstamo esté ACTIVO
         if (prestamo.getEstado() != Prestamo.EstadoPrestamo.ACTIVO) {
-            throw new IllegalStateException(
+            throw new RuntimeException(
                     "El préstamo no está activo. Estado actual: " + prestamo.getEstado());
         }
 
@@ -118,23 +103,16 @@ public class PrestamoServiceImpl implements PrestamoService {
         prestamo.setFechaDevolucionReal(LocalDate.now());
         prestamo.setEstado(Prestamo.EstadoPrestamo.DEVUELTO);
 
-        // 5. Cambiar el estado del ejemplar a DISPONIBLE
+        // 5. REGLA: cambiar el estado del ejemplar a DISPONIBLE
         ejemplar.setEstado(Ejemplar.EstadoEjemplar.DISPONIBLE);
         ejemplarRepository.save(ejemplar);
 
         // 6. Guardar el préstamo actualizado
         Prestamo prestamoActualizado = prestamoRepository.save(prestamo);
 
-        // 7. Obtener datos del usuario para la respuesta
-        Usuario usuario = usuarioRepository.findById(prestamo.getUsuarioId())
-                .orElse(null);
-
+        Usuario usuario = usuarioRepository.findById(prestamo.getUsuarioId()).orElse(null);
         return mapToResponse(prestamoActualizado, usuario, ejemplar);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONSULTAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public PrestamoResponse consultarPrestamo(String id) {
@@ -143,7 +121,6 @@ public class PrestamoServiceImpl implements PrestamoService {
 
         Usuario usuario = usuarioRepository.findById(prestamo.getUsuarioId()).orElse(null);
         Ejemplar ejemplar = ejemplarRepository.findById(prestamo.getEjemplarId()).orElse(null);
-
         return mapToResponse(prestamo, usuario, ejemplar);
     }
 
@@ -162,7 +139,6 @@ public class PrestamoServiceImpl implements PrestamoService {
     @Override
     public List<PrestamoResponse> listarPorUsuario(String usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-
         return prestamoRepository.findByUsuarioId(usuarioId)
                 .stream()
                 .map(p -> {
@@ -186,7 +162,7 @@ public class PrestamoServiceImpl implements PrestamoService {
 
     @Override
     public List<PrestamoResponse> listarPrestamosVencidos() {
-        // Préstamos cuya fecha esperada ya pasó y siguen en estado ACTIVO
+        // Préstamos cuya fecha esperada ya pasó y siguen ACTIVOS
         return prestamoRepository
                 .findByFechaDevolucionEsperadaBeforeAndEstado(
                         LocalDate.now(), Prestamo.EstadoPrestamo.ACTIVO)
@@ -199,20 +175,16 @@ public class PrestamoServiceImpl implements PrestamoService {
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MÉTODOS AUXILIARES PRIVADOS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Convierte una entidad Prestamo en PrestamoResponse enriquecido con
-     * datos del usuario y del ejemplar para mayor legibilidad.
-     *
-     * Calcula automáticamente si el préstamo está vencido.
-     */
+    // ─────────────────────────────────────────────
+    // Método auxiliar: convierte Prestamo → PrestamoResponse
+    // ─────────────────────────────────────────────
     private PrestamoResponse mapToResponse(Prestamo prestamo, Usuario usuario, Ejemplar ejemplar) {
-        boolean vencido = prestamo.getEstado() == Prestamo.EstadoPrestamo.ACTIVO
-                && prestamo.getFechaDevolucionEsperada() != null
-                && prestamo.getFechaDevolucionEsperada().isBefore(LocalDate.now());
+        String tituloLibro = "";
+        if (ejemplar != null) {
+            tituloLibro = libroRepository.findById(ejemplar.getLibroId())
+                    .map(l -> l.getTitulo())
+                    .orElse("Libro no encontrado");
+        }
 
         return new PrestamoResponse(
                 prestamo.getId(),
@@ -220,22 +192,11 @@ public class PrestamoServiceImpl implements PrestamoService {
                 usuario != null ? usuario.getNombre() : "Usuario no encontrado",
                 prestamo.getEjemplarId(),
                 ejemplar != null ? ejemplar.getCodigoEjemplar() : "Ejemplar no encontrado",
-                obtenerTituloLibro(ejemplar),
+                tituloLibro,
                 prestamo.getFechaPrestamo(),
                 prestamo.getFechaDevolucionEsperada(),
                 prestamo.getFechaDevolucionReal(),
-                prestamo.getEstado(),
-                prestamo.getObservaciones(),
-                vencido
+                prestamo.getEstado()
         );
-    }
-
-    /**
-     * Obtiene el título del libro a partir del ejemplar.
-     * Retorna un mensaje descriptivo si no se puede obtener.
-     */
-    private String obtenerTituloLibro(Ejemplar ejemplar) {
-        if (ejemplar == null) return "Libro no encontrado";
-        return ejemplar.getLibroId(); // El Controller enriquece esto si se necesita
     }
 }

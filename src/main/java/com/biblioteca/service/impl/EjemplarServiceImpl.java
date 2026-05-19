@@ -14,10 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implementación concreta de EjemplarService.
- * Gestiona la lógica de negocio para las copias físicas de los libros.
- *
- * Patrón POO: Polimorfismo — implementa la interfaz EjemplarService.
- * Patrón POO: Asociación — un Ejemplar siempre pertenece a un Libro existente.
+ * Sigue el mismo patrón que LibroServiceImpl.
  */
 @Service
 public class EjemplarServiceImpl implements EjemplarService {
@@ -25,19 +22,11 @@ public class EjemplarServiceImpl implements EjemplarService {
     private final EjemplarRepository ejemplarRepository;
     private final LibroRepository libroRepository;
 
-    /**
-     * Inyección por constructor de ambos repositorios necesarios.
-     * EjemplarService necesita LibroRepository para validar que el libro exista.
-     */
     public EjemplarServiceImpl(EjemplarRepository ejemplarRepository,
                                 LibroRepository libroRepository) {
         this.ejemplarRepository = ejemplarRepository;
         this.libroRepository = libroRepository;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // REGISTRAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public EjemplarResponse registrarEjemplar(EjemplarRequest request) {
@@ -48,18 +37,19 @@ public class EjemplarServiceImpl implements EjemplarService {
 
         // Regla de negocio: el código del ejemplar debe ser único
         if (ejemplarRepository.existsByCodigoEjemplar(request.getCodigoEjemplar())) {
-            throw new IllegalArgumentException(
+            throw new RuntimeException(
                     "Ya existe un ejemplar con el código: " + request.getCodigoEjemplar());
         }
 
-        Ejemplar ejemplar = mapToEntity(request);
+        Ejemplar ejemplar = new Ejemplar();
+        ejemplar.setCodigoEjemplar(request.getCodigoEjemplar());
+        ejemplar.setLibroId(request.getLibroId());
+        ejemplar.setEstado(request.getEstado());
+        ejemplar.setUbicacion(request.getUbicacion());
+
         Ejemplar ejemplarGuardado = ejemplarRepository.save(ejemplar);
         return mapToResponse(ejemplarGuardado, libro.getTitulo());
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTUALIZAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public EjemplarResponse actualizarEjemplar(String id, EjemplarRequest request) {
@@ -79,10 +69,6 @@ public class EjemplarServiceImpl implements EjemplarService {
         return mapToResponse(ejemplarActualizado, libro.getTitulo());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ELIMINAR
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
     public void eliminarEjemplar(String id) {
         if (!ejemplarRepository.existsById(id)) {
@@ -90,10 +76,6 @@ public class EjemplarServiceImpl implements EjemplarService {
         }
         ejemplarRepository.deleteById(id);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONSULTAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public EjemplarResponse consultarEjemplar(String id) {
@@ -157,19 +139,9 @@ public class EjemplarServiceImpl implements EjemplarService {
                 .collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MÉTODOS AUXILIARES PRIVADOS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private Ejemplar mapToEntity(EjemplarRequest request) {
-        Ejemplar ejemplar = new Ejemplar();
-        ejemplar.setCodigoEjemplar(request.getCodigoEjemplar());
-        ejemplar.setLibroId(request.getLibroId());
-        ejemplar.setEstado(request.getEstado());
-        ejemplar.setUbicacion(request.getUbicacion());
-        return ejemplar;
-    }
-
+    // ─────────────────────────────────────────────
+    // Método auxiliar: convierte Ejemplar → EjemplarResponse
+    // ─────────────────────────────────────────────
     private EjemplarResponse mapToResponse(Ejemplar ejemplar, String tituloLibro) {
         return new EjemplarResponse(
                 ejemplar.getId(),

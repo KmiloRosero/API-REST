@@ -12,10 +12,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implementación concreta de UsuarioService.
- * Gestiona la lógica de negocio para todos los tipos de usuario:
- * Estudiante, Profesor y Bibliotecario.
- *
- * Patrón POO: Polimorfismo — implementa la interfaz UsuarioService.
+ * Sigue el mismo patrón que LibroServiceImpl.
  */
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
@@ -26,29 +23,27 @@ public class UsuarioServiceImpl implements UsuarioService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // REGISTRAR
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
     public UsuarioResponse registrarUsuario(UsuarioRequest request) {
-        // Regla de negocio: el correo debe ser único en el sistema
+        // Regla de negocio: el correo debe ser único
         if (usuarioRepository.existsByCorreo(request.getCorreo())) {
-            throw new IllegalArgumentException(
-                    "Ya existe un usuario con el correo: " + request.getCorreo());
+            throw new RuntimeException("Ya existe un usuario con el correo: " + request.getCorreo());
         }
 
-        // Validaciones específicas por tipo de usuario
-        validarCamposEspecificos(request);
+        Usuario usuario = new Usuario();
+        usuario.setNombre(request.getNombre());
+        usuario.setCorreo(request.getCorreo());
+        usuario.setTipoUsuario(request.getTipoUsuario());
+        usuario.setCodigoEstudiante(request.getCodigoEstudiante());
+        usuario.setPrograma(request.getPrograma());
+        usuario.setCodigoProfesor(request.getCodigoProfesor());
+        usuario.setFacultad(request.getFacultad());
+        usuario.setCodigoEmpleado(request.getCodigoEmpleado());
+        usuario.setTurno(request.getTurno());
 
-        Usuario usuario = mapToEntity(request);
         Usuario usuarioGuardado = usuarioRepository.save(usuario);
         return mapToResponse(usuarioGuardado);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTUALIZAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public UsuarioResponse actualizarUsuario(String id, UsuarioRequest request) {
@@ -57,7 +52,6 @@ public class UsuarioServiceImpl implements UsuarioService {
 
         usuario.setNombre(request.getNombre());
         usuario.setCorreo(request.getCorreo());
-        usuario.setTelefono(request.getTelefono());
         usuario.setTipoUsuario(request.getTipoUsuario());
         usuario.setCodigoEstudiante(request.getCodigoEstudiante());
         usuario.setPrograma(request.getPrograma());
@@ -70,10 +64,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         return mapToResponse(usuarioActualizado);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ELIMINAR
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Override
     public void eliminarUsuario(String id) {
         if (!usuarioRepository.existsById(id)) {
@@ -81,10 +71,6 @@ public class UsuarioServiceImpl implements UsuarioService {
         }
         usuarioRepository.deleteById(id);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // CONSULTAR
-    // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public UsuarioResponse consultarUsuario(String id) {
@@ -109,78 +95,14 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<UsuarioResponse> buscarPorNombre(String nombre) {
-        return usuarioRepository.findByNombreContainingIgnoreCase(nombre)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // MÉTODOS AUXILIARES PRIVADOS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Valida que los campos específicos del tipo de usuario estén presentes.
-     * Aplica POO: encapsulamiento de la lógica de validación.
-     */
-    private void validarCamposEspecificos(UsuarioRequest request) {
-        switch (request.getTipoUsuario()) {
-            case ESTUDIANTE -> {
-                if (request.getCodigoEstudiante() == null || request.getCodigoEstudiante().isBlank()) {
-                    throw new IllegalArgumentException("El código de estudiante es obligatorio para usuarios de tipo ESTUDIANTE");
-                }
-                if (request.getPrograma() == null || request.getPrograma().isBlank()) {
-                    throw new IllegalArgumentException("El programa es obligatorio para usuarios de tipo ESTUDIANTE");
-                }
-            }
-            case PROFESOR -> {
-                if (request.getCodigoProfesor() == null || request.getCodigoProfesor().isBlank()) {
-                    throw new IllegalArgumentException("El código de profesor es obligatorio para usuarios de tipo PROFESOR");
-                }
-                if (request.getFacultad() == null || request.getFacultad().isBlank()) {
-                    throw new IllegalArgumentException("La facultad es obligatoria para usuarios de tipo PROFESOR");
-                }
-            }
-            case BIBLIOTECARIO -> {
-                if (request.getCodigoEmpleado() == null || request.getCodigoEmpleado().isBlank()) {
-                    throw new IllegalArgumentException("El código de empleado es obligatorio para usuarios de tipo BIBLIOTECARIO");
-                }
-                if (request.getTurno() == null || request.getTurno().isBlank()) {
-                    throw new IllegalArgumentException("El turno es obligatorio para usuarios de tipo BIBLIOTECARIO");
-                }
-            }
-        }
-    }
-
-    /**
-     * Convierte un UsuarioRequest en una entidad Usuario.
-     */
-    private Usuario mapToEntity(UsuarioRequest request) {
-        Usuario usuario = new Usuario();
-        usuario.setNombre(request.getNombre());
-        usuario.setCorreo(request.getCorreo());
-        usuario.setTelefono(request.getTelefono());
-        usuario.setTipoUsuario(request.getTipoUsuario());
-        usuario.setCodigoEstudiante(request.getCodigoEstudiante());
-        usuario.setPrograma(request.getPrograma());
-        usuario.setCodigoProfesor(request.getCodigoProfesor());
-        usuario.setFacultad(request.getFacultad());
-        usuario.setCodigoEmpleado(request.getCodigoEmpleado());
-        usuario.setTurno(request.getTurno());
-        return usuario;
-    }
-
-    /**
-     * Convierte una entidad Usuario en un UsuarioResponse.
-     */
+    // ─────────────────────────────────────────────
+    // Método auxiliar: convierte Usuario → UsuarioResponse
+    // ─────────────────────────────────────────────
     private UsuarioResponse mapToResponse(Usuario usuario) {
         return new UsuarioResponse(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getCorreo(),
-                usuario.getTelefono(),
                 usuario.getTipoUsuario(),
                 usuario.getCodigoEstudiante(),
                 usuario.getPrograma(),
