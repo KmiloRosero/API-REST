@@ -95,6 +95,14 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<UsuarioResponse> buscarPorNombre(String nombre) {
+        return usuarioRepository.findByNombreContainingIgnoreCase(nombre)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     // ─────────────────────────────────────────────
     // Método auxiliar: convierte Usuario → UsuarioResponse
     // ─────────────────────────────────────────────

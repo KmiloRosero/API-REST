@@ -23,4 +23,6 @@ public interface UsuarioService {
     List<UsuarioResponse> listarUsuarios();
 
     List<UsuarioResponse> listarPorTipo(Usuario.TipoUsuario tipoUsuario);
+
+    List<UsuarioResponse> buscarPorNombre(String nombre);
 }
